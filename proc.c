@@ -214,6 +214,29 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  int last_shmid = -2;
+  if(curproc->pid > 2){
+    for (i = 0; i < 4096; i++) {
+      np->shmsegs[i].isAttached = curproc->shmsegs[i].isAttached;
+      np->shmsegs[i].shmid = curproc->shmsegs[i].shmid;
+      int temp_shmid = np->shmsegs[i].shmid;
+      if(temp_shmid == -1 || temp_shmid == last_shmid){
+        continue;
+      }
+      else{
+        last_shmid = temp_shmid;
+        updateShmSeg(temp_shmid, np->pid, 0);
+      }
+    }
+  }
+  else{
+    for (i = 0; i < 4096; i++) {
+      np->shmsegs[i].isAttached = 0;
+      np->shmsegs[i].shmid = -1;
+    }  
+  }
+
+
   np->state = RUNNABLE;
 
   release(&ptable.lock);
