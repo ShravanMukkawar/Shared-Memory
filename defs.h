@@ -9,6 +9,9 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct shmid_ds;
+struct ipc_perm;
+struct shmpgtable;
 
 // bio.c
 void            binit(void);
@@ -185,6 +188,23 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+void            clearmapping(pde_t *pgdir, char *uva);
+int		mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+
+// static pte_t*   walkpgdir(pde_t *pgdir, const void *va, int alloc);
+// shm.c
+void            shminit(void);
+int             shmgetHelper(int key, uint size, int shmflg);
+void*           shmatHelper(int shmid, int shmaddr, int shmflg);
+int             shmdtHelper(int shmaddr);
+int             shmctlHelper(int shmid, int cmd, struct shmid_ds* buf);
+void            shminfoHelper();
+int		removeshmHelper(int shm_identifier, int flag);
+
+int             allocShmSeg(uint segmentSize, int key, int shmflag);
+void*           allocshmuvm(int shmid, void *shmaddr, int reqPages, int si, int shmflag);
+void		freeshmPages(int shmid);
+void        	updateShmSeg(int shmid, int pid, int flag);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

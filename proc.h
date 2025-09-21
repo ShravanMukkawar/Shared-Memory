@@ -34,6 +34,11 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct attached_shmsegs {
+	int isAttached;
+	int shmid;
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -49,6 +54,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct attached_shmsegs shmsegs[4096];	       // Stores attached shared memory segments
 };
 
 // Process memory is laid out contiguously, low addresses first:

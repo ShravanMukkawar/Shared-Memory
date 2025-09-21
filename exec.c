@@ -99,6 +99,23 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+
+  int last_shmid = -2;
+  for (i = 0; i < 4096; i++) {
+    if(curproc->shmsegs[i].isAttached == 1){
+      int temp_shmid = curproc->shmsegs[i].shmid;
+      curproc->shmsegs[i].isAttached = 0;
+      curproc->shmsegs[i].shmid = -1;
+      if(temp_shmid == last_shmid){
+        continue;
+      }
+      else{
+        last_shmid = temp_shmid;
+        updateShmSeg(temp_shmid, -1, 1);
+      }
+    }
+  }
+
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;

@@ -1,6 +1,24 @@
 struct stat;
 struct rtcdate;
 
+// data structures for shared memory
+struct ipc_perm {
+        int __key;
+        uint mode;
+};
+
+struct shmid_ds {
+    struct ipc_perm shm_perm;
+    uint          shm_segsz;
+    int          shm_atime;
+    int          shm_dtime;
+    int          shm_ctime;
+    int           shm_cpid;
+    int           shm_lpid;
+    uint        shm_nattch;
+    void*       pa;
+};
+
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -23,6 +41,12 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int shmget(uint, int ,int );
+void* shmat(int , int ,int);
+int shmdt(int);
+int shmctl(int ,int ,struct shmid_ds* );
+void shminfo();
+int removeshm(int, int);
 
 // ulib.c
 int stat(const char*, struct stat*);

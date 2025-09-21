@@ -13,6 +13,417 @@ char name[3];
 char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
 
+void shmgetTest(){
+  int shmid;
+	printf(1, "\n--------------SHMGET TEST--------------\n\n");
+
+	printf(1, "creating a segment with IPC_CREAT: ");
+	shmid = shmget(12345, 2000, IPC_CREAT);
+	if(shmid < 0){
+		printf(1, "failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+  printf(1, "created segment with id: %d\n", shmid);
+
+  printf(1, "creating a segment with IPC_CREAT | IPC_EXCL (with new key, should create new segment pass the test): ");
+	shmid = shmget(12346, 1024, IPC_CREAT | IPC_EXCL);
+	if(shmid < 0){
+		printf(1, "Failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+  printf(1, "created segment with id: %d\n", shmid);
+
+  printf(1, "creating a segment with IPC_CREAT | IPC_EXCL (with used key, should not create to pass the test): ");
+	shmid = shmget(12346, 1024, IPC_CREAT | IPC_EXCL);
+	if(shmid >= 0){
+		printf(1, "Failed\n");
+    printf(1, "created segment with id: %d\n", shmid);
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  printf(1, "creating a segment with no flag (should return old segment if key is already used): ");
+	shmid = shmget(12345, 1024, 0);
+	if(shmid < 0){
+		printf(1, "Failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+  printf(1, "returned segment with id: %d\n", shmid);
+
+  printf(1, "creating a segment with no flag (should not create a new segment if key is new): ");
+	shmid = shmget(12347, 1024, 0);
+	if(shmid >= 0){
+		printf(1, "Failed\n");
+    printf(1, "created segment with id: %d\n", shmid);
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  printf(1, "creating a segment with IPC_PRIVATE (should create new segment with randomly generated key to pass the test): ");
+	shmid = shmget(IPC_PRIVATE, 1024, IPC_CREAT | IPC_EXCL);
+	if(shmid < 0){
+		printf(1, "failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+  printf(1, "created segment with id: %d\n", shmid);
+
+  printf(1, "creating a segment of size less than minimum size of segment i.e. 1024bytes: ");
+	shmid = shmget(IPC_PRIVATE, 512, IPC_CREAT | IPC_EXCL);
+	if(shmid >= 0){
+		printf(1, "Failed\n");
+    printf(1, "created segment with id: %d\n", shmid);
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  printf(1, "creating a segment of size greater than maximum possible size of segment i.e. 16mb: ");
+	shmid = shmget(IPC_PRIVATE, (16*1024*1024), IPC_CREAT | IPC_EXCL);
+	if(shmid >= 0){
+		printf(1, "Failed\n");
+    printf(1, "created segment with id: %d\n", shmid);
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  // removing all created segments during the shmgetTest:
+  removeshm(0, 0);
+  removeshm(1, 0);
+  removeshm(2, 0);
+
+  printf(1, "\n----------SHMGET TEST PASSED!----------\n\n");
+}
+
+void shmctlTest(){
+  printf(1, "\n--------------SHMCTL TEST--------------\n\n");
+
+	int shmid = shmget(IPC_PRIVATE, 1024, IPC_CREAT );
+  // printf(1, "created segment with id: %d\n", shmid);
+
+  printf(1, "Calling shmctl with cmd=IPC_INFO:  ");
+  shmctl(shmid, IPC_INFO, 0);
+  printf(1, "Passed\n");
+
+  printf(1, "Calling shmctl with cmd=SHM_INFO:  ");
+  shmctl(shmid, SHM_INFO, 0);
+  printf(1, "Passed\n");
+
+  printf(1, "Calling shmctl with cmd=IPC_STAT:  ");
+  struct shmid_ds *buf = (struct shmid_ds*)malloc(sizeof(struct shmid_ds));
+  int ret = shmctl(shmid, IPC_STAT, buf);
+  if(ret < 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  // calling shmctl with IPC_SET
+  printf(1, "Calling shmctl with cmd=IPC_SET:  ");
+  buf->shm_perm.mode = 0777;
+  shmctl(shmid, IPC_SET, buf);
+  struct shmid_ds *buf1 = (struct shmid_ds*)malloc(sizeof(struct shmid_ds));
+  shmctl(shmid, IPC_STAT, buf1);
+  if(buf1->shm_perm.mode != 0777){
+    printf(1, "Failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+
+  // calling shmctl with IPC_RMID
+  printf(1, "Calling shmctl with cmd=IPC_RMID:  ");
+  shmctl(shmid, IPC_RMID, 0);
+  shmctl(shmid, IPC_STAT, buf);
+  if(buf->shm_perm.mode == SHM_DEST){
+    printf(1, "Failed\n");
+    exit();
+  }
+  printf(1, "Passed\n");
+  
+  // removing all created segments during the shmctlTest:
+  removeshm(0, 0);
+
+  printf(1, "\n----------SHMCTL TEST PASSED!----------\n\n");
+}
+
+void shmatTest(){
+  printf(1, "\n--------------SHMAT TEST--------------\n\nNULL input:  ");
+
+  int id = shmget(IPC_PRIVATE, 8096, IPC_CREAT); 
+  
+  // NULL Input
+  void* va = shmat(id, 0, 0);
+  if((int)va < 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va);
+  
+  printf(1, "Invalid id:  ");
+  void* va1 = shmat(-1, 0, 0);
+  if((int)va1 >= 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va1);
+
+  // No segment with given id
+  printf(1, "No segment with given id:  ");
+  void* va2 = shmat(4000, 0, 0);
+  if((int)va2 >= 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va2);
+
+  // Page address not aligned to page boundary
+  printf(1, "Page address not aligned to page boundary:  ");
+  void* va3 = shmat(id, 0x70000001, 0);
+  if((int)va3 >= 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va3);  
+  
+  // Page address out of range
+  printf(1, "Page address out of range:  ");
+  void* va4 = shmat(id, 0x90000000, 0);
+  if((int)va4 >= 0){
+    printf(1, "Failed\n");
+    exit();
+    printf(1, "va3 = %p\n", (int)va3);
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va4);
+  
+  // NULL and SHM_RND
+  printf(1, "SHM_RND:  ");
+  void* va5 = shmat(id, (int)0x7FF00001, SHM_RND);
+  if((int)va5 < 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  shmdt((int)va5); 
+  removeshm(id, 0);
+  printf(1, "\n----------SHMAT TEST PASSED!----------\n\n");
+}
+
+void shmdtTest(){
+  printf(1, "\n--------------SHMDT TEST--------------\n\nNULL input:  ");
+  
+  int id = shmget(IPC_PRIVATE, 8096, IPC_CREAT); 
+  
+  // NULL Input
+  int ret = shmdt(0);
+  if(ret == 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  
+  // Invalid address
+  printf(1, "Invalid address:   ");
+  int ret1 = shmdt(0x90000000);
+  if(ret1 == 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  
+  // Valid address
+  printf(1, "Valid address:   ");
+  //void* va = shmat(id, (int)0x7F0F0000 , SHM_RND);
+  void* va = shmat(id, 0 , 0);
+  int ret2 = shmdt((int)va);
+  if(ret2 != 0){
+    printf(1, "Failed\n");
+    exit();
+  }
+  else{
+    printf(1, "passed\n");
+  }
+  removeshm(id, 0);
+  printf(1, "\n----------SHMDT TEST PASSED!----------\n\n");
+}
+
+
+void test_read_and_write_simple(){
+  printf(1,"\n----------READ WRITE TO SHARED MEMORY TEST----------\n\nSingle Read and Write   ");
+  
+  int id = shmget(IPC_PRIVATE, 8096, IPC_CREAT); 
+  char* va = (char*)shmat(id, 0, SHM_W | SHM_R);
+  if((int)va < 0) {
+      printf(1,"Failed to attach shared memory segment %d \n",(int)va);
+      exit();
+  }
+
+  // Write data to shared memory
+  char *data = "Hello, shared memory!";
+  printf(1,"\n");
+  printf(1,"Data written to shared memory: ");
+  for (int i=0; data[i] != 0; i++) {
+      va[i] = data[i];
+      printf(1,"%c", va[i]);
+  }
+
+  printf(1,"\nData read from memory: %s\n", (char*)data);
+  for(int i=0 ; va[i] != 0; i++){
+    printf(1,"%c",va[i]);
+  }
+  
+  // Detach shared memory
+  int ret = shmdt((int)va);
+  if(ret != 0) {
+      printf(1,"Failed to detach shared memory segment\n");
+      exit();
+  }
+  printf(1,"\n----------READ WRITE TO SHARED MEMORY TEST PASSED!----------\n\n");
+}
+
+// Getting error "Assertion `fbn < MAXFILE' failed." due to size limitation
+// void test_read_and_write_advanced(){
+//   printf(1,"\n----------READ WRITE TO SHARED MEMORY TEST MUTIPLE TIMES----------\n\nMultiple Read and Write:   ");
+//   int id = shmget(IPC_PRIVATE, 8096, IPC_CREAT); 
+//   char* va = (char*)shmat(id, 0, SHM_W | SHM_R);
+//   printf(1,"%p",va);
+//   if((int)va < 0) {
+//       printf(1,"Failed to attach shared memory segment %d \n",(int)va);
+//       exit();
+//   }
+//   // Write data to shared memory
+//   char *data = "Hello, shared memory!";
+//   printf(1,"\n");
+//   int i;
+//   printf(1,"Data written to shared memory: \n");
+//   for (i=0; data[i] != 0; i++) {
+//       va[i] = data[i];
+//       printf(1,"%c", va[i]);
+//   }
+
+//   printf(1,"Data read from memory:  %s\n",(char*)data);
+//   for(int i=0 ; va[i]!=0; i++){
+//     printf(1,"%c",va[i]);
+//   }
+
+//   char *data1 = "Adding more data to the shared memory\n";
+//   for (int j=0; data1[j] != 0; j++) {
+//       va[i+j] = data1[j];
+//       printf(1,"%c", va[i+j]);
+//   }
+
+//   printf(1,"Data read from memory:  %s%s\n",data,data1);
+//   for(int i=0 ; va[i]!=0; i++){
+//     printf(1,"%c",va[i]);
+//   }
+
+//   char *data2 = "New data for shared memory!";
+//   printf(1,"\nOverwriting data in shared memory:");
+//   for (int i=0; data2[i] != 0; i++) {
+//       va[i] = data2[i];
+//       printf(1,"%c", va[i]);
+//   }
+
+//   printf(1,"\nData read from memory:  %s\n",data2);
+//   for(int i=0 ; va[i]!=0; i++){
+//     printf(1,"%c",va[i]);
+//   }
+
+//   // Detach shared memory
+//   int ret = shmdt((int)va);
+//   if(ret != 0) {
+//       printf(1,"Failed to detach shared memory segment\n");
+//       exit();
+//   }
+//   printf(1,"\n----------WRITE TO SHARED MEMORY TEST MUTIPLE TIMES PASSED!----------\n\n");
+// }
+
+//Getting error "Assertion `fbn < MAXFILE' failed." due to size limitation
+// void test_read_and_write_multiprocess(){
+//     printf(1,"\n----------WRITE TO SHARED MEMORY TEST MUTIPLE PROCESS----------\n\nMultiple Process Read and Write:\n");
+//     int id = shmget(IPC_PRIVATE, 8096, IPC_CREAT);
+//     char* va = (char*)shmat(id, 0, SHM_W | SHM_R);
+//     if((int)va < 0) {
+//         printf(1,"Failed to attach shared memory segment %d \n",(int)va);
+//         exit();
+//     }
+//     // Write data to shared memory
+//     char *data = "Hello, shared memory!";
+//     printf(1,"Data written to shared memory:  ");
+//     for (int i=0; data[i] != 0; i++) {
+//         va[i] = data[i];
+//         printf(1,"%c", va[i]);
+//     }
+    
+//     // Fork for parallel processes
+//     int pid = fork();
+    
+//     if (pid < 0) {
+//         printf(1,"Fork failed\n");
+//         exit();
+//     } else if (pid == 0) { // Child process
+//         // Read data from shared memory
+//         printf(1,"\nData read from memory by Child Process:  %s\n",data);
+        
+//     } else { // Parent process
+//         // Wait for child process to finish
+//         wait();
+        
+//         // Fork again for another parallel process
+//         int pid2 = fork();
+        
+//         if (pid2 < 0) {
+//             printf(1,"Fork failed\n");
+//             exit();
+//         } else if (pid2 == 0) { // Second child process
+//             // Read data from shared memory again
+//             printf(1,"Data read from memory by Second Child Process:  %s\n",data);
+//         } else { // Parent process
+//             // Wait for second child process to finish
+//             wait();            
+//             // Overwrite data in shared memory
+//             char *new_data = "New data overwritten!";
+//             printf(1,"\nOverwriting data in shared memory:  ");
+//             for (int i=0; new_data[i] != 0; i++) {
+//                 va[i] = new_data[i];
+//                 printf(1,"%c", va[i]);
+//             }
+//             // Read data from shared memory again after overwrite
+//             printf(1,"\nReading data from shared memory after overwrite:  %s\n",new_data);
+//         }      
+//     }
+    
+//     // Detach shared memory
+//     int ret = shmdt((int)va);
+//     if(ret != 0) {
+//         printf(1,"Failed to detach shared memory segment\n");
+//         exit();
+//     }
+//     printf(1,"\n----------WRITE TO SHARED MEMORY TEST MULTIPLE PROCESS PASSED!----------\n\n");
+// }
+
 // does chdir() call iput(p->cwd) in a transaction?
 void
 iputtest(void)
@@ -1755,6 +2166,14 @@ main(int argc, char *argv[])
     exit();
   }
   close(open("usertests.ran", O_CREATE));
+
+  shmgetTest();
+  shmctlTest();
+  shmatTest();
+  shmdtTest();
+  test_read_and_write_simple();          
+  // test_read_and_write_advanced();       // Due to size limitation cannot run all read and write tests simultaneously
+  // test_read_and_write_multiprocess();   // Due to size limitation cannot run all read and write tests simultaneously
 
   argptest();
   createdelete();

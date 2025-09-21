@@ -442,3 +442,81 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+
+// Shared memory related system calls:
+int 
+sys_shmget(void)
+{
+        int key, size, shmflag;
+
+        if(argint(0, &key) < 0)
+                return -1;
+        if(argint(1, &size) < 0)
+                return -1;
+        if(argint(2, &shmflag) < 0)
+                return -1;
+
+        return shmgetHelper(key, size, shmflag);
+}
+
+void*
+sys_shmat(void)
+{
+        int shmid, shmflag, shmaddr;
+        if(argint(0, &shmid) < 0)
+                return (void *)101;
+        if(argint(1, &shmaddr) < 0)
+                return (void *)102;
+        if(argint(2, &shmflag) < 0)
+                return (void *)103;
+
+        return shmatHelper(shmid, shmaddr, shmflag);
+}
+
+int
+sys_shmdt(void)
+{
+        int shmaddr;
+        int val = argint(0, &shmaddr);
+        if( val < 0){
+                return -1;
+        }
+        return shmdtHelper(shmaddr);
+}
+
+int
+sys_shmctl(void)
+{
+        int shmid, cmd;
+        struct shmid_ds *buf;
+
+        if(argint(0, &shmid) < 0)
+                return -1;
+        if(argint(1, &cmd) < 0)
+                return -1;
+        if(argptr(2, (char **)&buf, sizeof(struct shmid_ds *)) < 0)
+                return -1;
+
+        return shmctlHelper(shmid, cmd, buf);
+}
+
+void
+sys_shminfo(void)
+{
+        shminfoHelper();
+        return;
+}
+
+int
+sys_removeshm(void)
+{
+	int shm_identifier, flag;
+
+	if(argint(0, &shm_identifier) < 0)
+		return -1;
+	if(argint(1, &flag) < 0)
+		return -1;
+
+	return removeshmHelper(shm_identifier, flag);
+}
